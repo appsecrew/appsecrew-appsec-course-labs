@@ -92,3 +92,17 @@ Each lab has a built-in lab guide:
 - Lab 06: See `lab-06-container-security/LAB_GUIDE.md` or http://localhost:8080/lab-guide
 
 > **Warning:** These labs contain intentional security vulnerabilities. Run only in isolated environments. Never expose to the internet.
+
+---
+
+## Extra Mile: Deploy to AWS
+
+Once you've completed the labs locally, we recommend deploying them to AWS as an extra challenge. This gives you hands-on experience with:
+
+- Provisioning EC2 instances and security groups with the AWS CLI
+- Attacking labs from a separate EC2 attacker instance (simulating real-world external testing)
+- Exploiting **Lab 03 SSRF** against the real AWS Instance Metadata Service (IMDS) to steal live IAM credentials — a cloud-specific attack chain you can't replicate locally
+- Chaining **Lab 06 container escape** to reach the EC2 host and access IMDS
+- Running automated scans with Nuclei across all labs from the attacker box
+
+Full step-by-step instructions: [DEPLOY-AWS.md](./DEPLOY-AWS.md)

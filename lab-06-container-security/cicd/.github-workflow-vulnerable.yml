@@ -1,0 +1,47 @@
+# VULNERABLE CI/CD Pipeline — Security Training Only
+# CI-001: Secrets hardcoded in workflow
+# CI-002: Using latest/unpinned action versions
+# CI-003: No image scanning
+# CI-004: Pushing to registry without signing
+# CI-005: Running as root in build container
+
+name: Build and Deploy (VULNERABLE)
+
+on:
+  push:
+    branches: [main]
+
+env:
+  # CI-001: VULNERABLE — Hardcoded secrets in workflow file
+  AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+  AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  DB_PASSWORD: super_secret_prod_password_123
+  DOCKER_PASSWORD: my_docker_hub_password
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # CI-002: VULNERABLE — Using @latest instead of pinned SHA
+      - uses: actions/checkout@latest
+
+      - name: Build Docker image
+        run: |
+          # CI-006: VULNERABLE — No --no-cache, builds with potentially stale layers
+          docker build -t myapp:latest .
+          # CI-007: VULNERABLE — Pushing :latest tag (non-deterministic)
+          docker push myapp:latest
+
+      # CI-003: VULNERABLE — No security scanning step
+      # Should run: trivy image myapp:latest
+
+      - name: Deploy to production
+        run: |
+          # CI-008: VULNERABLE — Direct kubectl apply without review
+          kubectl apply -f kubernetes/vulnerable/
+          # CI-009: VULNERABLE — Secrets passed as plain CLI args
+          kubectl create secret generic app-secret \
+            --from-literal=db-password=$DB_PASSWORD \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      # CI-010: VULNERABLE — No approval gate before production deployment

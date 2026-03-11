@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Profile - SecureShop{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <h4>User Profile</h4>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for msg in messages %}
+            <div class="alert alert-success">{{ msg }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <!-- Profile update form - VULNERABLE: No CSRF protection -->
+        <div class="card border-warning mb-3">
+            <div class="card-header bg-warning text-dark">
+                <strong>Update Profile (No CSRF Protection)</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/update_profile">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" value="{{ user.username }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" value="{{ user.email }}">
+                    </div>
+                    <button type="submit" class="btn btn-warning">Update Profile</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <!-- DOM XSS demo -->
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <strong>DOM-Based XSS Demo</strong>
+            </div>
+            <div class="card-body">
+                <p class="small">Welcome message from URL hash (DOM XSS):</p>
+                <div id="greeting" class="alert alert-info">
+                    <!-- DOM content will be inserted here -->
+                </div>
+                <p class="small text-muted">
+                    Test: <a href="/profile#&lt;img src=x onerror=alert('DOM-XSS')&gt;">/profile#&lt;img src=x onerror=alert('DOM-XSS')&gt;</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VULNERABLE: DOM-based XSS via location.hash -->
+<script>
+// VULNERABLE: DOM-based XSS
+// Attacker sends victim: /profile#<img src=x onerror=alert(document.cookie)>
+var greeting = decodeURIComponent(document.location.hash.substring(1));
+if (greeting) {
+    // SECURITY ISSUE: innerHTML assignment with unescaped user-controlled data
+    document.getElementById('greeting').innerHTML = "Hello, " + greeting + "!";
+}
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero-section bg-light p-5 rounded mb-4">
+    <h1 class="display-4">Welcome to SecureShop</h1>
+    <p class="lead">Your trusted e-commerce platform with intentional vulnerabilities for security testing</p>
+    <a class="btn btn-primary btn-lg" href="/products">Shop Now</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h3>Search Products</h3>
+        <!-- VULNERABLE: Reflected XSS vulnerability in search -->
+        <form action="/search" method="GET" class="d-flex">
+            <input class="form-control me-2" type="search" name="q" placeholder="Search products..." 
+                   value="{{ request.args.get('q', '') }}">
+            <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        <small class="text-muted">Try searching for: <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code></small>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning">
+                <strong>⚠️ Security Notice</strong>
+            </div>
+            <div class="card-body">
+                <p class="card-text">This application contains intentional security vulnerabilities for educational purposes.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3>Featured Products</h3>
+<div class="row">
+    {% for product in products[:3] %}
+    <div class="col-md-4 mb-4">
+        <div class="card product-card h-100">
+            <div class="card-body">
+                <h5 class="card-title">{{ product.name }}</h5>
+                <p class="card-text">{{ product.description }}</p>
+                <p class="card-text"><strong>${{ "%.2f"|format(product.price) }}</strong></p>
+                <a href="/product/{{ product.id }}" class="btn btn-primary">View Details</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h4>🎯 XSS Testing Targets</h4>
+            <ul>
+                <li><strong>Reflected XSS:</strong> Search functionality above</li>
+                <li><strong>Stored XSS:</strong> Product reviews (view any product)</li>
+                <li><strong>DOM-based XSS:</strong> URL fragment processing</li>
+                <li><strong>Blind XSS:</strong> Contact form submissions</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

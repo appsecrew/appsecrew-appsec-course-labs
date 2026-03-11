@@ -1,0 +1,201 @@
+@model TransferViewModel
+@{
+    ViewData["Title"] = "Transfer Money";
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="fas fa-exchange-alt"></i> Transfer Money</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <strong>⚠️ CSRF Vulnerability:</strong> This form lacks anti-forgery token protection, making it vulnerable to Cross-Site Request Forgery attacks.
+                </div>
+
+                @* VULNERABLE: Missing @Html.AntiForgeryToken() *@
+                <form asp-action="Send" method="post" id="transferForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="FromAccountNumber" class="form-label">From Account *</label>
+                                <select asp-for="FromAccountNumber" asp-items="Model.UserAccounts" class="form-select">
+                                    <option value="">Select your account</option>
+                                </select>
+                                <span asp-validation-for="FromAccountNumber" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="ToAccountNumber" class="form-label">To Account *</label>
+                                <select asp-for="ToAccountNumber" asp-items="Model.AllAccounts" class="form-select">
+                                    <option value="">Select destination account</option>
+                                </select>
+                                <span asp-validation-for="ToAccountNumber" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="Amount" class="form-label">Amount *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input asp-for="Amount" type="number" step="0.01" min="0.01" max="50000" class="form-control" placeholder="0.00">
+                                </div>
+                                <span asp-validation-for="Amount" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="Description" class="form-label">Description (Optional)</label>
+                                <input asp-for="Description" type="text" class="form-control" placeholder="Payment description">
+                                <span asp-validation-for="Description" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" onclick="resetForm()">Reset</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-paper-plane"></i> Send Transfer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick Transfer Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Transfer</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-danger">
+                    <strong>🚨 API CSRF Vulnerability:</strong> The quick transfer API endpoint lacks CSRF protection.
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <input type="number" id="quickAmount" step="0.01" class="form-control" placeholder="Amount">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" id="quickToAccount" class="form-control" placeholder="To Account">
+                    </div>
+                    <div class="col-md-4">
+                        <button onclick="quickTransfer()" class="btn btn-warning btn-sm">Quick Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <strong>🚨 CSRF Attack Vectors</strong>
+            </div>
+            <div class="card-body">
+                <h6>Test CSRF Attacks:</h6>
+                <ol class="small">
+                    <li><strong>Form CSRF:</strong> Missing anti-forgery token</li>
+                    <li><strong>GET-based:</strong> Try URL parameters</li>
+                    <li><strong>JSON CSRF:</strong> API endpoints vulnerable</li>
+                    <li><strong>iframe/form:</strong> Hidden auto-submit forms</li>
+                </ol>
+                <hr>
+                <h6>Sample Attack URLs:</h6>
+                <code class="small">
+                    /Transfer/Send?FromAccountNumber=USER001&ToAccountNumber=EVIL001&Amount=1000
+                </code>
+            </div>
+        </div>
+
+        <div class="card border-info mt-3">
+            <div class="card-header bg-info text-white">
+                <strong>💡 Security Testing</strong>
+            </div>
+            <div class="card-body">
+                <h6>Create Malicious Page:</h6>
+                <p class="small">Create an HTML page with a hidden form that auto-submits to this endpoint.</p>
+                <h6>Tools:</h6>
+                <ul class="small">
+                    <li>Burp Suite</li>
+                    <li>OWASP ZAP</li>
+                    <li>Browser Developer Tools</li>
+                    <li>Custom HTML forms</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function resetForm() {
+            document.getElementById('transferForm').reset();
+        }
+
+        // VULNERABLE: CSRF in JavaScript AJAX calls
+        async function quickTransfer() {
+            const amount = document.getElementById('quickAmount').value;
+            const toAccount = document.getElementById('quickToAccount').value;
+
+            if (!amount || !toAccount) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                // SECURITY ISSUE: No CSRF token in AJAX request
+                const response = await fetch('/Transfer/QuickTransfer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `amount=${amount}&toAccount=${toAccount}`
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(`Transfer successful! New balance: $${result.newBalance}`);
+                    location.reload();
+                } else {
+                    alert(`Transfer failed: ${result.message}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Simulate CSRF attack for demonstration
+        function demonstrateCSRF() {
+            // This shows how a CSRF attack could work
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/Transfer/Send';
+            form.style.display = 'none';
+
+            const fields = {
+                'FromAccountNumber': 'USER001',
+                'ToAccountNumber': 'ATTACKER123', 
+                'Amount': '100',
+                'Description': 'CSRF Attack Demo'
+            };
+
+            for (const [name, value] of Object.entries(fields)) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = name;
+                input.value = value;
+                form.appendChild(input);
+            }
+
+            document.body.appendChild(form);
+            console.log('CSRF attack form created (not submitted for safety)');
+            console.log(form.outerHTML);
+        }
+    </script>
+}

@@ -1,0 +1,61 @@
+graph TB
+    subgraph "External"
+        U[Users/Browsers]
+        I[Internet]
+    end
+    
+    subgraph "Infrastructure"
+        LB[Load Balancer<br/>nginx/ALB<br/>Port: 80/443]
+        APP[Application Server<br/>Spring Boot<br/>Port: 8080]
+        DB[(MySQL Database<br/>Port: 3306)]
+    end
+    
+    subgraph "Application Layers"
+        WEB[Web Layer<br/>Controllers<br/>REST APIs<br/>Thymeleaf Templates]
+        SVC[Service Layer<br/>Business Logic<br/>Validation<br/>Security]
+        REPO[Repository Layer<br/>Data Access<br/>JPA/JDBC<br/>Transactions]
+    end
+    
+    subgraph "Security Components"
+        AUTH[Authentication<br/>Spring Security<br/>Session Management]
+        AUTHZ[Authorization<br/>Role-Based Access<br/>Method Security]
+    end
+    
+    subgraph "Data Storage"
+        TABLES[Database Tables<br/>users, products<br/>suppliers, inventory<br/>audit_logs]
+    end
+    
+    %% External connections
+    U --> I
+    I --> LB
+    
+    %% Infrastructure flow
+    LB --> APP
+    APP --> DB
+    
+    %% Application layer flow
+    APP --> WEB
+    WEB --> SVC
+    SVC --> REPO
+    REPO --> DB
+    
+    %% Security integration
+    WEB --> AUTH
+    WEB --> AUTHZ
+    SVC --> AUTHZ
+    
+    %% Database structure
+    DB --> TABLES
+    
+    %% Styling
+    classDef external fill:#e8f4fd,stroke:#2196f3,stroke-width:2px
+    classDef infrastructure fill:#fff3e0,stroke:#ff9800,stroke-width:2px
+    classDef application fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+    classDef security fill:#ffebee,stroke:#f44336,stroke-width:2px
+    classDef data fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    
+    class U,I external
+    class LB,APP,DB infrastructure
+    class WEB,SVC,REPO application
+    class AUTH,AUTHZ security
+    class TABLES data

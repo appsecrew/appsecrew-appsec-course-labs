@@ -1,0 +1,49 @@
+# VULNERABLE RBAC Configuration — Security Training Only
+# K8S-011: Overly permissive ClusterRole (wildcard permissions)
+# K8S-012: Default service account with broad permissions
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: devsecure-sa
+  namespace: default
+---
+# K8S-011: VULNERABLE — Wildcard permissions on all resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: devsecure-admin-role
+rules:
+  - apiGroups: ["*"]       # VULNERABLE: all API groups
+    resources: ["*"]       # VULNERABLE: all resources (secrets, pods, etc.)
+    verbs: ["*"]           # VULNERABLE: all verbs (get, list, create, delete, exec)
+---
+# K8S-012: VULNERABLE — Binding to default service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: devsecure-admin-binding
+subjects:
+  - kind: ServiceAccount
+    name: default          # VULNERABLE: default SA gets admin access
+    namespace: default
+  - kind: ServiceAccount
+    name: devsecure-sa
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: devsecure-admin-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# K8S-013: VULNERABLE — Secret stored as base64 (not encrypted at rest)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: devsecure-secrets
+  namespace: default
+type: Opaque
+data:
+  # base64 encoded — NOT encrypted! `echo -n "value" | base64` to decode
+  db-password: c3VwZXJfc2VjcmV0X2RiX3Bhc3NfMTIz   # super_secret_db_pass_123
+  aws-key: QUNJQUNJQUNJQUNJ                        # fake key
+  jwt-secret: ZGV2LWp3dC1zZWNyZXQ=               # dev-jwt-secret

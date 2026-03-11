@@ -1,0 +1,42 @@
+# SECURE DOCKERFILE — Reference Implementation
+# Compare with docker/vulnerable/Dockerfile.web
+
+# SECURE: Use specific, minimal base image (distroless or slim)
+FROM python:3.11.7-slim AS builder
+
+WORKDIR /build
+
+# SECURE: Only copy what's needed for dependency install
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# --- Runtime stage ---
+FROM python:3.11.7-slim
+
+# SECURE: Create non-root user with specific UID/GID
+RUN groupadd -r -g 1001 appgroup && \
+    useradd -r -u 1001 -g appgroup -s /sbin/nologin -d /app appuser
+
+WORKDIR /app
+
+# SECURE: Copy only production dependencies from builder
+COPY --from=builder /root/.local /home/appuser/.local
+
+# SECURE: Copy only application code (no .env, no secrets, no .git)
+COPY --chown=appuser:appgroup applications/web-app/app.py .
+COPY --chown=appuser:appgroup applications/web-app/requirements.txt .
+
+# SECURE: No unnecessary packages, no curl/wget/netcat
+
+# SECURE: Switch to non-root user before running
+USER appuser
+
+# SECURE: Only expose necessary port
+EXPOSE 8080
+
+# SECURE: Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
+
+# SECURE: Use exec form to avoid shell injection
+CMD ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]

@@ -1,0 +1,74 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var user = ViewBag.User as SecureBankingApp.Models.ApplicationUser;
+    var accounts = ViewBag.Accounts as List<SecureBankingApp.Models.BankAccount> ?? new();
+    var txList = ViewBag.RecentTransactions as List<SecureBankingApp.Models.Transaction> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Welcome, @user?.FullName!</h4>
+    <div>
+        <a href="/Transfer" class="btn btn-primary btn-sm me-2">Transfer Money</a>
+        <a href="/BillPayment" class="btn btn-outline-primary btn-sm">Pay Bills</a>
+    </div>
+</div>
+
+<!-- Account Balance Cards -->
+<div class="row g-3 mb-4">
+    @foreach (var acct in accounts)
+    {
+        <div class="col-md-4">
+            <div class="card border-primary">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">@acct.AccountType Account</p>
+                    <h5 class="font-monospace">@acct.AccountNumber</h5>
+                    <h2 class="text-success">@acct.Balance.ToString("C")</h2>
+                    <small class="text-muted">Available Balance</small>
+                </div>
+            </div>
+        </div>
+    }
+    @if (!accounts.Any())
+    {
+        <div class="col-12"><div class="alert alert-info">No active accounts found.</div></div>
+    }
+</div>
+
+<!-- CSRF Warning Banner -->
+<div class="alert alert-warning mb-4">
+    <strong>CSRF Lab:</strong> The Transfer, Bill Payment, and Admin actions are vulnerable to CSRF attacks.
+    <a href="/csrf-demo.html" class="alert-link">Open CSRF Demo Page</a> in the same browser to see the attack.
+</div>
+
+<!-- Recent Transactions -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between">
+        <h6 class="mb-0">Recent Transactions</h6>
+        <a href="/Transfer/History" class="btn btn-sm btn-outline-secondary">View All</a>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var tx in txList)
+                {
+                    <tr>
+                        <td>@tx.TransactionDate.ToString("MM/dd/yyyy HH:mm")</td>
+                        <td>@tx.Description</td>
+                        <td class="@(tx.Amount > 0 ? "text-danger" : "text-success")">
+                            @tx.Amount.ToString("C")
+                        </td>
+                        <td><span class="badge bg-success">@tx.Status</span></td>
+                    </tr>
+                }
+                @if (!txList.Any())
+                {
+                    <tr><td colspan="4" class="text-center text-muted py-3">No transactions yet</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

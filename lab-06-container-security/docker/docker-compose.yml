@@ -1,0 +1,87 @@
+version: '3.8'
+
+# ================================================================
+# Lab 06 — Container Security Assessment
+# DevSecure Platform: Intentionally Misconfigured
+# ================================================================
+
+services:
+
+  # VULNERABLE Web Application
+  web-app:
+    build:
+      context: ..
+      dockerfile: docker/vulnerable/Dockerfile.web
+    container_name: devsecure-web
+    ports:
+      - "8080:8080"
+    environment:
+      # VULNERABLE CONT-004: Secrets in environment variables
+      - DB_PASSWORD=super_secret_db_pass_123
+      - AWS_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
+      - AWS_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      - JWT_SECRET=dev-jwt-secret-do-not-use-in-prod
+      - FLASK_ENV=development
+    volumes:
+      # VULNERABLE CONT-003: Docker socket mounted = container escape!
+      - /var/run/docker.sock:/var/run/docker.sock
+      # VULNERABLE CONT-003: Host filesystem access
+      - /tmp:/host-tmp
+    # VULNERABLE CONT-001: Running as root (no user: directive)
+    # VULNERABLE CONT-012: Privileged mode enabled
+    privileged: true
+    # VULNERABLE CONT-013: No resource limits
+    # Should have: mem_limit, cpus
+    cap_add:
+      # VULNERABLE: Extra capabilities added
+      - NET_ADMIN
+      - SYS_PTRACE
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # API Service
+  api-service:
+    build:
+      context: ..
+      dockerfile: docker/vulnerable/Dockerfile.web
+    container_name: devsecure-api
+    ports:
+      - "8081:8080"
+    environment:
+      - SERVICE=api
+      - DB_PASSWORD=super_secret_db_pass_123
+      - INTERNAL_API_KEY=internal-key-12345
+    # VULNERABLE CONT-003: Docker socket access
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - app-network
+      - db-network
+
+  # Database (for demonstration)
+  database:
+    image: postgres:14
+    container_name: devsecure-db
+    environment:
+      # VULNERABLE CONT-004: Weak default credentials hardcoded
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: devsecure
+    ports:
+      # VULNERABLE CONT-014: Database port exposed to host
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - db-network
+
+networks:
+  app-network:
+    driver: bridge
+  db-network:
+    driver: bridge
+
+volumes:
+  db-data:

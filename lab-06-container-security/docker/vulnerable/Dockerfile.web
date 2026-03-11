@@ -1,0 +1,44 @@
+# VULNERABLE DOCKERFILE — For Security Training Only
+# DO NOT USE IN PRODUCTION
+#
+# Vulnerabilities demonstrated:
+# CONT-001: Running as root user
+# CONT-002: Using outdated/unpinned base image
+# CONT-004: Secrets hardcoded as build args/ENV
+# CONT-006: No health check, no resource limits
+# CONT-007: Unnecessary packages installed
+# CONT-008: Sensitive files copied into image
+
+FROM python:3.9  # VULNERABLE: No version pin, pulls latest 3.9.x
+
+# VULNERABLE CONT-004: Secrets as ENV vars (visible in `docker inspect` and history)
+ENV DB_PASSWORD=super_secret_db_pass_123
+ENV AWS_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
+ENV AWS_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+ENV JWT_SECRET=dev-jwt-secret-do-not-use-in-prod
+ENV ADMIN_API_KEY=tok-admin-a1b2c3d4e5f6
+
+# VULNERABLE CONT-007: Installing unnecessary packages (curl, wget, netcat for "debugging")
+RUN apt-get update && apt-get install -y \
+    curl wget netcat-openbsd nmap vim git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# VULNERABLE CONT-008: Copy everything including sensitive files
+COPY . .
+
+# VULNERABLE CONT-009: npm install as root
+RUN pip install -r requirements.txt
+
+# VULNERABLE CONT-001: Running as root (no USER instruction)
+# Should be: RUN useradd -r -u 1001 appuser && USER appuser
+
+# VULNERABLE CONT-010: Exposing unnecessary port
+EXPOSE 8080
+EXPOSE 22   # VULNERABLE: SSH port exposed in container image
+
+# VULNERABLE CONT-011: No HEALTHCHECK defined
+
+# VULNERABLE CONT-001: Process runs as root
+CMD ["python", "app.py"]

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Login - SecureShop{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white"><h5 class="mb-0">Login</h5></div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for msg in messages %}
+                    <div class="alert alert-warning">{{ msg }}</div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <form method="POST" action="/login">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                </form>
+                <hr>
+                <div class="text-center">
+                    <a href="/register">Don't have an account? Register</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3 border-warning">
+            <div class="card-body">
+                <strong>Test Accounts:</strong>
+                <ul class="small mb-0">
+                    <li><code>admin / admin123</code> — Admin user</li>
+                    <li>Register a new account to test XSS in reviews</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="/lab-guide" class="btn btn-outline-secondary btn-sm">Lab Guide</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

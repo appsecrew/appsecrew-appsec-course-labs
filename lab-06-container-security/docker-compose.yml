@@ -1,0 +1,33 @@
+version: '3.8'
+
+# ================================================================
+# Lab 06 — Container Security Assessment
+# DevSecure Platform: Intentionally Misconfigured
+# Start: docker compose up -d
+# Web UI: http://localhost:8080
+# ================================================================
+
+services:
+
+  web-app:
+    build: .
+    container_name: devsecure-web
+    ports:
+      - "8080:8080"
+    environment:
+      # VULNERABLE CONT-004: Secrets as environment variables
+      - DB_PASSWORD=super_secret_db_pass_123
+      - AWS_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
+      - AWS_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+      - JWT_SECRET=dev-jwt-secret-do-not-use-in-prod
+    volumes:
+      # VULNERABLE CONT-003: Docker socket mounted (container escape!)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # VULNERABLE: Host /tmp accessible from container
+      - /tmp:/host-tmp
+    # VULNERABLE CONT-001 + CONT-012: Privileged + runs as root
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+    restart: unless-stopped

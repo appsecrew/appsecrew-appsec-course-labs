@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}500 Internal Server Error{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-1 text-danger">500</h1>
+    <h3>Internal Server Error</h3>
+    <!-- VULNERABLE: Shows error details to users -->
+    {% if error %}
+    <div class="alert alert-danger text-start mt-3">
+        <strong>Error Details (VULNERABLE - information disclosure):</strong>
+        <pre>{{ error }}</pre>
+    </div>
+    {% endif %}
+    <a href="/" class="btn btn-primary">Go Home</a>
+</div>
+{% endblock %}

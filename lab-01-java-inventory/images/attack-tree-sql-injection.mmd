@@ -1,0 +1,76 @@
+graph TD
+    ROOT[Unauthorized Data Access via SQL Injection]
+    
+    %% Main attack vectors
+    ROOT --> AUTH[Authentication Bypass]
+    ROOT --> DATA[Data Extraction]
+    ROOT --> PRIV[Privilege Escalation]
+    
+    %% Authentication Bypass paths
+    AUTH --> LOGIN[SQL Injection in Login]
+    AUTH --> SESSION[Session Hijacking]
+    AUTH --> BRUTE[Credential Brute Force]
+    
+    LOGIN --> LOGIN1[Union-based Login Bypass]
+    LOGIN --> LOGIN2[Boolean-based Login Bypass]
+    LOGIN --> LOGIN3[Error-based Login Bypass]
+    
+    LOGIN1 --> LOGIN1A["Payload: admin' OR '1'='1' --"]
+    LOGIN2 --> LOGIN2A["Payload: admin' AND '1'='1' --"]
+    LOGIN3 --> LOGIN3A["Payload: admin' AND (SELECT 1) --"]
+    
+    %% Data Extraction paths
+    DATA --> SEARCH[SQL Injection in Search]
+    DATA --> ERROR[Error-based Information Disclosure]
+    DATA --> BLIND[Blind SQL Injection]
+    
+    SEARCH --> UNION[Union-based Data Extraction]
+    SEARCH --> TIME[Time-based Data Extraction]
+    
+    UNION --> UNION1["Extract user table: ' UNION SELECT * FROM users --"]
+    UNION --> UNION2["Extract passwords: ' UNION SELECT username,password FROM users --"]
+    
+    TIME --> TIME1["Time delay: ' AND (SELECT SLEEP(5)) --"]
+    TIME --> TIME2["Conditional delay: ' AND IF(condition,SLEEP(5),0) --"]
+    
+    BLIND --> BOOL[Boolean-based Blind]
+    BLIND --> CHAR[Character-by-character Extraction]
+    
+    BOOL --> BOOL1["Test condition: ' AND 1=1 --"]
+    BOOL --> BOOL2["Test false: ' AND 1=2 --"]
+    
+    CHAR --> CHAR1["Extract char: ' AND SUBSTRING(password,1,1)='a' --"]
+    CHAR --> CHAR2["Brute force each position"]
+    
+    %% Privilege Escalation
+    PRIV --> ADMIN[Access Admin Functions]
+    PRIV --> MODIFY[Modify Database]
+    PRIV --> SHELL[Command Execution]
+    
+    ADMIN --> ADMIN1[Direct URL Access]
+    ADMIN --> ADMIN2[Role Manipulation]
+    
+    MODIFY --> INSERT[Insert Malicious Data]
+    MODIFY --> UPDATE[Update Existing Records]
+    MODIFY --> DELETE[Delete Critical Data]
+    
+    %% Impact levels
+    LOGIN1A --> IMPACT1[Complete Authentication Bypass]
+    UNION1 --> IMPACT2[Full Database Access]
+    ADMIN1 --> IMPACT3[Administrative Control]
+    DELETE --> IMPACT4[Data Destruction]
+    
+    %% Styling
+    classDef root fill:#ff6b6b,stroke:#d63031,stroke-width:3px,color:#fff
+    classDef high fill:#fd79a8,stroke:#e84393,stroke-width:2px,color:#fff
+    classDef medium fill:#fdcb6e,stroke:#e17055,stroke-width:2px
+    classDef low fill:#55a3ff,stroke:#0984e3,stroke-width:2px,color:#fff
+    classDef payload fill:#a29bfe,stroke:#6c5ce7,stroke-width:1px,color:#fff
+    classDef impact fill:#fd79a8,stroke:#e84393,stroke-width:2px,color:#fff
+    
+    class ROOT root
+    class AUTH,DATA,PRIV high
+    class LOGIN,SEARCH,ERROR,BLIND,ADMIN,MODIFY medium
+    class UNION,TIME,BOOL,CHAR,LOGIN1,LOGIN2,LOGIN3 low
+    class LOGIN1A,LOGIN2A,LOGIN3A,UNION1,UNION2,TIME1,TIME2,BOOL1,BOOL2,CHAR1,CHAR2 payload
+    class IMPACT1,IMPACT2,IMPACT3,IMPACT4 impact

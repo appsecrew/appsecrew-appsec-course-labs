@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><title>Products - SecureShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4><i class="bi bi-grid"></i> Products</h4>
+        <a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+    </div>
+
+    <!-- Search form -->
+    <div class="card mb-3 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <strong><i class="bi bi-bug"></i> SQL Injection Test Point</strong>
+        </div>
+        <div class="card-body">
+            <form action="/products/search" method="GET" class="row g-2">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" name="q" placeholder="Search by name/description">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="category" placeholder="Category (vulnerable!)">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-warning w-100">
+                        <i class="bi bi-search"></i> Search (VULNERABLE)
+                    </button>
+                </div>
+            </form>
+            <small class="text-muted mt-1 d-block">
+                Try: <code>' UNION SELECT id,username,password,email,role,quantity,supplier_id,created_at FROM users --</code>
+            </small>
+        </div>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- Products table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark">
+                    <tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Qty</th><th>Supplier</th><th></th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="p : ${products}">
+                        <td th:text="${p.id}">1</td>
+                        <td th:text="${p.name}">-</td>
+                        <td><span class="badge bg-secondary" th:text="${p.category}">-</span></td>
+                        <td th:text="'$' + ${p.price}">$0</td>
+                        <td>
+                            <span th:text="${p.quantity}"
+                                  th:classappend="${(p.quantity != null && p.quantity < 20)} ? 'badge bg-danger' : 'badge bg-success'">0</span>
+                        </td>
+                        <td th:text="${p.supplier_name}">-</td>
+                        <td><a th:href="'/products/' + ${p.id}" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

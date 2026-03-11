@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - SecureShop Inventory</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+
+            <!-- Lab Header -->
+            <div class="text-center mb-4">
+                <h2><i class="bi bi-box-seam"></i> SecureShop Inventory</h2>
+                <span class="badge bg-danger">VULNERABLE - SQL Injection Lab</span>
+            </div>
+
+            <!-- Login Card -->
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-lock"></i> Login</h5>
+                </div>
+                <div class="card-body">
+
+                    <!-- Error / Success messages -->
+                    <div th:if="${error}"   class="alert alert-danger"  th:text="${error}"></div>
+                    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+                    <div th:if="${param.logout}" class="alert alert-info">You have been logged out.</div>
+
+                    <form action="/auth/login" method="POST">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username"
+                                   placeholder="Enter username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password"
+                                   placeholder="Enter password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Login</button>
+                    </form>
+
+                    <hr>
+                    <div class="text-center">
+                        <a href="/auth/register">Don't have an account? Register</a> |
+                        <a href="/auth/reset-password">Forgot password?</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SQL Injection Hints Card -->
+            <div class="card mt-3 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-bug"></i> SQL Injection Attack Hints</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-2"><strong>This login form is vulnerable to SQL injection.</strong></p>
+                    <p class="small">Try these payloads in the <strong>Username</strong> field:</p>
+                    <ul class="small mb-2">
+                        <li><code>admin' OR '1'='1' --</code> — bypass password check</li>
+                        <li><code>admin' OR 1=1 --</code> — alternative bypass</li>
+                        <li><code>' OR ''='</code> — login as first user</li>
+                        <li><code>admin'; UPDATE users SET role='ADMIN' WHERE username='john'; --</code></li>
+                    </ul>
+                    <p class="small text-muted mb-0">
+                        <strong>Test accounts:</strong> admin/admin123 · john/password123 · jane/secret
+                    </p>
+                </div>
+            </div>
+
+            <!-- Lab Guide Link -->
+            <div class="text-center mt-3">
+                <a href="/lab-guide" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-book"></i> Open Lab Guide
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

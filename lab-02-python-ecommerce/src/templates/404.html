@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}404 Not Found{% endblock %}
+{% block content %}
+<div class="text-center py-5">
+    <h1 class="display-1 text-danger">404</h1>
+    <h3>Page Not Found</h3>
+    <!-- VULNERABLE: Reflected XSS via error URL displayed without escaping -->
+    <p>The page <strong><span id="url">{{ url | safe }}</span></strong> was not found.</p>
+    <p class="text-muted small">XSS Test: <a href="/nonexistent?test=<script>alert('XSS')</script>">Try reflected XSS via 404</a></p>
+    <a href="/" class="btn btn-primary">Go Home</a>
+</div>
+{% endblock %}

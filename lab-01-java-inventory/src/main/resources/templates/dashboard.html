@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - SecureShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .sidebar{min-height:calc(100vh - 56px);background:#2c3e50}
+        .sidebar .nav-link{color:#bdc3c7}.sidebar .nav-link:hover{color:#fff;background:rgba(255,255,255,.1)}
+        .sidebar-heading{color:#7f8c8d;font-size:.75em;text-transform:uppercase;padding:.5rem 1rem}
+        .stat-card{border-left:4px solid}
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark py-1">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/dashboard"><i class="bi bi-box-seam"></i> SecureShop
+            <span style="background:#dc3545;color:#fff;font-size:.7em;padding:2px 6px;border-radius:3px" class="ms-2">VULNERABLE LAB</span>
+        </a>
+        <div class="d-flex align-items-center">
+            <span class="text-light me-3 small">
+                <i class="bi bi-person-circle"></i>
+                <span th:text="${username}">user</span>
+                <span class="badge bg-warning text-dark ms-1" th:text="${role}">ROLE</span>
+            </span>
+            <a href="/auth/logout" class="btn btn-outline-light btn-sm">Logout</a>
+        </div>
+    </div>
+</nav>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-2 p-0 sidebar d-none d-md-block">
+            <div class="pt-3">
+                <p class="sidebar-heading">Navigation</p>
+                <a href="/dashboard"  class="nav-link px-3 py-2 active"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+                <a href="/lab-guide"  class="nav-link px-3 py-2"><i class="bi bi-book me-2"></i>Lab Guide</a>
+                <p class="sidebar-heading mt-3">Inventory</p>
+                <a href="/products"        class="nav-link px-3 py-2"><i class="bi bi-grid me-2"></i>Products</a>
+                <a href="/products/search" class="nav-link px-3 py-2"><i class="bi bi-search me-2"></i>Search</a>
+                <a href="/inventory"       class="nav-link px-3 py-2"><i class="bi bi-boxes me-2"></i>Inventory</a>
+                <a href="/inventory/report"class="nav-link px-3 py-2"><i class="bi bi-bar-chart me-2"></i>Reports</a>
+                <a href="/suppliers"       class="nav-link px-3 py-2"><i class="bi bi-truck me-2"></i>Suppliers</a>
+                <p class="sidebar-heading mt-3">Attack Surface</p>
+                <a href="/h2-console"      class="nav-link px-3 py-2 text-warning"><i class="bi bi-database me-2"></i>H2 Console</a>
+                <a href="/actuator/env"    class="nav-link px-3 py-2 text-warning"><i class="bi bi-key me-2"></i>Env Variables</a>
+            </div>
+        </div>
+        <div class="col col-md-10 p-4">
+            <h4>Dashboard</h4>
+            <div th:if="${dbError}" class="alert alert-danger" th:text="${dbError}"></div>
+
+            <!-- Stats -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="card stat-card border-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="text-muted small mb-1">Total Products</p>
+                                    <h3 th:text="${productCount}">0</h3>
+                                </div>
+                                <i class="bi bi-grid fs-1 text-primary opacity-25"></i>
+                            </div>
+                            <a href="/products" class="small">View all →</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card border-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="text-muted small mb-1">Active Suppliers</p>
+                                    <h3 th:text="${supplierCount}">0</h3>
+                                </div>
+                                <i class="bi bi-truck fs-1 text-success opacity-25"></i>
+                            </div>
+                            <a href="/suppliers" class="small">View all →</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card border-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="text-muted small mb-1">Low Stock Items</p>
+                                    <h3 th:text="${lowStockCount}" class="text-warning">0</h3>
+                                </div>
+                                <i class="bi bi-exclamation-triangle fs-1 text-warning opacity-25"></i>
+                            </div>
+                            <a href="/inventory" class="small">Check stock →</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stat-card border-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <p class="text-muted small mb-1">System Users</p>
+                                    <h3 th:text="${userCount}">0</h3>
+                                </div>
+                                <i class="bi bi-people fs-1 text-info opacity-25"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent transactions -->
+            <div class="card">
+                <div class="card-header"><h6 class="mb-0">Recent Inventory Transactions</h6></div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
+                            <tr><th>Product</th><th>Type</th><th>Qty Change</th><th>Notes</th><th>Date</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="tx : ${recentTransactions}">
+                                <td th:text="${tx.product_name}">-</td>
+                                <td>
+                                    <span th:text="${tx.transaction_type}"
+                                          th:classappend="${tx.transaction_type == 'IN'} ? 'badge bg-success' : 'badge bg-danger'">IN</span>
+                                </td>
+                                <td th:text="${tx.quantity_change}">0</td>
+                                <td th:text="${tx.notes}">-</td>
+                                <td th:text="${tx.created_at}">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

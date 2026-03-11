@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Admin - Contact Messages{% endblock %}
+{% block content %}
+<div class="alert alert-danger">
+    <strong>Admin Panel — Internal Use Only</strong>
+    <span class="vulnerability-indicator ms-2">BLIND XSS VULNERABLE</span>
+</div>
+
+<h4>Contact Form Submissions</h4>
+<p class="text-muted small">This page renders user-submitted content without sanitization. A stored XSS payload in a contact message will execute here when admin views it.</p>
+
+{% with messages = get_flashed_messages() %}
+{% if messages %}{% for msg in messages %}<div class="alert alert-info">{{ msg }}</div>{% endfor %}{% endif %}
+{% endwith %}
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr><th>ID</th><th>Name</th><th>Email</th><th>Message</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for contact in contacts %}
+                <tr>
+                    <td>{{ contact.id }}</td>
+                    <!-- VULNERABLE: Rendered without escaping (Blind XSS) -->
+                    <td>{{ contact.name | safe }}</td>
+                    <td>{{ contact.email }}</td>
+                    <td>{{ contact.message | safe }}</td>
+                    <td>{{ contact.created_at }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted">No messages yet</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

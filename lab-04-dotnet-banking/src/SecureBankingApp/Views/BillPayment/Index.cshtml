@@ -1,0 +1,65 @@
+@model SecureBankingApp.Models.ViewModels.BillPaymentViewModel
+@{
+    ViewData["Title"] = "Pay Bills";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var accounts = ViewBag.Accounts as List<SecureBankingApp.Models.BankAccount> ?? new();
+}
+
+<h4>Pay Bills</h4>
+
+<div class="alert alert-danger">
+    <strong>CSRF-002 Vulnerability:</strong> This form has no anti-forgery token.
+    An attacker can trick you into submitting a bill payment from a malicious page.
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                <!-- VULNERABLE: No @Html.AntiForgeryToken() -->
+                <form asp-action="Pay" method="post">
+                    <div class="mb-3">
+                        <label class="form-label">From Account</label>
+                        <select asp-for="FromAccountNumber" class="form-select">
+                            @foreach (var acct in accounts)
+                            {
+                                <option value="@acct.AccountNumber">@acct.AccountNumber — @acct.AccountType (@acct.Balance.ToString("C"))</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="BillerCode" class="form-label">Biller Code</label>
+                        <input asp-for="BillerCode" class="form-control" placeholder="e.g. ELEC-001, WATER-002"/>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Amount" class="form-label">Amount ($)</label>
+                        <input asp-for="Amount" class="form-control" type="number" step="0.01"/>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">Description</label>
+                        <input asp-for="Description" class="form-control" placeholder="Optional"/>
+                    </div>
+                    <button type="submit" class="btn btn-warning">Pay Bill</button>
+                    <a href="/Dashboard" class="btn btn-outline-secondary ms-2">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark"><strong>CSRF Attack Demo</strong></div>
+            <div class="card-body">
+                <p class="small">An attacker can create a malicious page that auto-submits this form:</p>
+                <pre class="small">&lt;form action="http://bank/BillPayment/Pay" method="POST"&gt;
+  &lt;input name="FromAccountNumber" value="ACCT001"&gt;
+  &lt;input name="BillerCode" value="ATTACKER-001"&gt;
+  &lt;input name="Amount" value="500"&gt;
+&lt;/form&gt;
+&lt;script&gt;document.forms[0].submit()&lt;/script&gt;</pre>
+                <a href="/csrf-demo.html" class="btn btn-danger btn-sm">Open CSRF Demo</a>
+            </div>
+        </div>
+    </div>
+</div>

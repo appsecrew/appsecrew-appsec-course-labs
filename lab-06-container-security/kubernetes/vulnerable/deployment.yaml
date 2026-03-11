@@ -1,0 +1,84 @@
+# VULNERABLE Kubernetes Deployment — Security Training Only
+# K8S-001: Missing security context (runs as root)
+# K8S-002: No resource limits
+# K8S-003: Privileged container
+# K8S-004: Secrets stored as plaintext in env vars
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devsecure-web
+  namespace: default
+  labels:
+    app: devsecure-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devsecure-web
+  template:
+    metadata:
+      labels:
+        app: devsecure-web
+    spec:
+      # K8S-005: No serviceAccountName (uses default SA with RBAC issues)
+      # K8S-003: No securityContext at pod level
+      containers:
+        - name: web
+          image: devsecure-web:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            # K8S-004: VULNERABLE — Secrets as plaintext environment variables
+            - name: DB_PASSWORD
+              value: "super_secret_db_pass_123"
+            - name: AWS_ACCESS_KEY
+              value: "AKIAIOSFODNN7EXAMPLE"
+            - name: AWS_SECRET_KEY
+              value: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+            - name: JWT_SECRET
+              value: "dev-jwt-secret-do-not-use-in-prod"
+          securityContext:
+            # K8S-001: VULNERABLE — Explicitly allowing root
+            runAsNonRoot: false
+            # K8S-003: VULNERABLE — Privileged mode
+            privileged: true
+            # K8S-006: VULNERABLE — Allows privilege escalation
+            allowPrivilegeEscalation: true
+            # K8S-007: VULNERABLE — Read-only root filesystem disabled
+            readOnlyRootFilesystem: false
+            capabilities:
+              # K8S-008: VULNERABLE — Adding dangerous capabilities
+              add:
+                - NET_ADMIN
+                - SYS_PTRACE
+                - SYS_ADMIN
+          # K8S-002: VULNERABLE — No resource limits (DoS risk)
+          # resources:
+          #   limits:
+          #     cpu: "500m"
+          #     memory: "256Mi"
+          volumeMounts:
+            # K8S-009: VULNERABLE — Docker socket mounted
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+      volumes:
+        # K8S-009: VULNERABLE — Docker socket host path
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+---
+# K8S-010: VULNERABLE — LoadBalancer exposes all ports to internet
+apiVersion: v1
+kind: Service
+metadata:
+  name: devsecure-web
+spec:
+  type: LoadBalancer
+  selector:
+    app: devsecure-web
+  ports:
+    - port: 80
+      targetPort: 8080

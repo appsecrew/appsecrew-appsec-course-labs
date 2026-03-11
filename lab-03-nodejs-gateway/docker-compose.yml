@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"   # API Gateway & UI
+      - "3001:3001"   # Auth Service
+      - "3002:3002"   # User Service
+      - "3003:3003"   # Admin Service
+      - "8169:8169"   # Fake AWS IMDS (simulates 169.254.169.254)
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - JWT_SECRET=vulnerable_secret_key_123
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    command: npm run start:all

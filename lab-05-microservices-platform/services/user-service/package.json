@@ -1,0 +1,11 @@
+{
+  "name": "cloudcorp-user-service",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": { "start": "node app.js" },
+  "dependencies": {
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3"
+  }
+}
